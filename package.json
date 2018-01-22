@@ -1,0 +1,36 @@
+{
+  "version": "0.5.0",
+  "author": "base0x23",
+  "private": true,
+  "dependencies": {},
+  "keywords": [
+    "pebble-app"
+  ],
+  "pebble": {
+    "sdkVersion": "3",
+    "resources": {
+      "media": []
+    },
+    "projectType": "native",
+    "uuid": "7447ffe2-dcdb-42e9-ab18-39c98fa6b1ee",
+    "messageKeys": {},
+    "enableMultiJS": false,
+    "displayName": "Drink-A-Lot",
+    "watchapp": {
+      "onlyShownOnCommunication": false,
+      "hiddenApp": false,
+      "watchface": false
+    },
+    "targetPlatforms": [
+      "aplite",
+      "basalt",
+      "chalk",
+      "diorite",
+      "emery"
+    ],
+    "capabilities": [
+      ""
+    ]
+  },
+  "name": "Drink-A-Lot"
+}

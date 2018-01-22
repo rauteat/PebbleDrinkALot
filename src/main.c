@@ -72,10 +72,42 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   update_time();
 }
 
+static Layer* g_layer = 0;
+static GPath *s_my_path_ptr = NULL;
+
+static const GPathInfo BOLT_PATH_INFO = {
+  .num_points = 6,
+  .points = (GPoint []) {{21, 0}, {14, 26}, {28, 26}, {7, 60}, {14, 34}, {0, 34}}
+};
+
+static void update_layer(struct Layer* layer, GContext* ctx) {
+if(!s_my_path_ptr) {
+  s_my_path_ptr = gpath_create(&BOLT_PATH_INFO);
+  // Rotate 15 degrees:
+  gpath_rotate_to(s_my_path_ptr, TRIG_MAX_ANGLE / 360 * 15);
+  // Translate by (5, 5):
+  gpath_move_to(s_my_path_ptr, GPoint(5, 5));
+}
+  // Fill the path:
+  graphics_context_set_fill_color(ctx, GColorWhite);
+  gpath_draw_filled(ctx, s_my_path_ptr);
+  // Stroke the path:
+#ifdef PBL_COLOR
+  graphics_context_set_stroke_color(ctx, GColorBlue);
+#else
+  graphics_context_set_stroke_color(ctx, GColorBlack);
+#endif
+  gpath_draw_outline(ctx, s_my_path_ptr);
+}
+
 static void main_window_load(Window *window) {
   // Get information about the Window
   Layer *window_layer = window_get_root_layer(window);
   GRect bounds = layer_get_bounds(window_layer);
+
+  g_layer = layer_create(bounds);
+  layer_set_update_proc(g_layer, update_layer);
+  layer_add_child(window_layer, g_layer);
 
   // Create the TextLayer with specific bounds
   s_time_layer = text_layer_create( GRect(0, 52, bounds.size.w, 50));

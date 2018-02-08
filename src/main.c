@@ -19,7 +19,8 @@ static char g_day[PERSIST_STRING_MAX_LENGTH] = { '\0' };
 - 
 */
 // storage API supports 256byte --> 128 uint16
-static uint16_t g_drinks[128] = {};
+#define MAX_DRINKS 128
+static uint16_t g_drinks[MAX_DRINKS] = {};
 
 static void storeData() {
   persist_write_int(STORAGE_WATERCNT_ML, g_watercnt_ml);
@@ -48,6 +49,86 @@ static void clearData() {
   persist_delete(STORAGE_DAY);
   persist_delete(STORAGE_GOAL_ML);
   persist_delete(STORAGE_DRINKS);
+}
+
+int numDrinks() {
+  for(int i=0 ; i<MAX_DRINKS ; ++i) {
+    if(g_drinks[i] == 0) {
+      return i;
+    }
+  }
+  return MAX_DRINKS;
+}
+
+// 1 bit doubling
+// 4 bit drink type
+// 11 bit time
+int drinkTime(int i) {
+  return (g_drinks[i] & 0x7ff);
+}
+int drinkType(int i) {
+  return ((g_drinks[i] >> 11) & 0xf);
+}
+int drinkFactor(int i) {
+  return ((g_drinks[i] & 0x8000) ? 2 : 1);
+}
+
+void setDrink(int idx, int time, int type) {
+  g_drinks[idx] = (type << 11) | time;
+}
+
+bool tryIncreaseDrinkFactor(int idx) {
+  if(!(g_drinks[idx] & 0x8000)) {
+    g_drinks[idx] |= 0x8000;
+    return true;
+  }
+  return false;
+}
+
+bool tryDecreaseDrinkFactor(int idx) {
+  if(g_drinks[idx] & 0x8000) {
+    g_drinks[idx] &= 0x7fff;
+    return true;
+  }
+  return false;
+}
+
+int curMins() {
+  time_t curT = time(NULL);
+  struct tm* curTM = localtime(&curT);
+
+  return (curTM->tm_hour * 60 + curTM->tm_min);
+}
+
+static const int DOUBLE_INTERVAL = 5; //mins
+void addDrink(int type) {
+  const int num = numDrinks();
+  const int t = curMins();  
+
+  if(num >= MAX_DRINKS) {
+    return;
+  }
+
+  if(num > 0 && drinkType(num-1) == type
+     && drinkTime(num-1) + DOUBLE_INTERVAL >= t)
+  {
+    if(!tryIncreaseDrinkFactor(num-1)) {
+      setDrink(num,t,type);
+    }
+  }
+  else {
+    setDrink(num,t,type);
+  }
+}
+
+void removeDrink() {
+  const int num = numDrinks();
+
+  if(num > 0) {
+    if(!tryDecreaseDrinkFactor(num-1)) {
+      g_drinks[num-1] = 0;
+    }
+  }
 }
 
 static Window *s_main_window; 

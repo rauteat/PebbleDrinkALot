@@ -60,6 +60,17 @@ int numDrinks() {
   return MAX_DRINKS;
 }
 
+typedef enum {
+  DT_WATER_250ML =0,
+  DT_WATER_100ML =1,
+  DT_WATER_333ML =2,
+
+  DT_COFFEE_100ML=4,
+
+  // beer? 250ML?
+  // ...
+} DrinkType;
+
 // 1 bit doubling
 // 4 bit drink type
 // 11 bit time
@@ -71,6 +82,22 @@ int drinkType(int i) {
 }
 int drinkFactor(int i) {
   return ((g_drinks[i] & 0x8000) ? 2 : 1);
+}
+int drinkVolume(int i) {
+  const int f = drinkFactor(i);
+
+  switch(drinkType(i)) {
+  case DT_WATER_250ML:
+    return 250*f;
+  case DT_WATER_100ML:
+    return 100*f;
+  case DT_WATER_333ML:
+    return 333*f;
+  case DT_COFFEE_100ML:
+    return 100*f;
+  default:
+    return 0;
+  }
 }
 
 void setDrink(int idx, int time, int type) {
@@ -198,12 +225,29 @@ static void update_layer(struct Layer* layer, GContext* ctx) {
 
   int y=168;
   g_water_path_points[0] = (GPoint){ .x = 0 , .y = 168 };
+#if 1
+  int ct = curMins();
+  int ip = 1;
+  const int numD = numDrinks();
+  for(int i=0 ; i<numD ; ++i) {
+    const int dt = drinkTime(i);
+    const int x = 148+(dt-ct)*2;
+    if(x<0) continue;
+    y -= drinkVolume(i)/10;
+    if(ip>=(MAX_WATER_PATH_POINTS-1)) continue; //FIXME: maybe better do this inverse ;)
+    g_water_path_points[ip++] = (GPoint){ .x = x , .y = y };
+  }
+  for(;ip<(MAX_WATER_PATH_POINTS-1);++ip) {
+    g_water_path_points[ip] = (GPoint){ .x = 150 , .y = y };
+  }
+#else
   for(int i=1 ; i<(MAX_WATER_PATH_POINTS-1) ; ++i) {
     const int x = 150*i/(MAX_WATER_PATH_POINTS-2);
     y -= rand() % 20;
     g_water_path_points[i].x = x;
     g_water_path_points[i].y = y;
   }
+#endif
   g_water_path_points[(MAX_WATER_PATH_POINTS-1)].x = 150;
   g_water_path_points[(MAX_WATER_PATH_POINTS-1)].y = 168;
 
@@ -263,6 +307,7 @@ static void main_window_unload(Window *window) {
 // typedef void(* ClickHandler)(ClickRecognizerRef recognizer, void *context) 
 void addADrink(ClickRecognizerRef recognizer, void *context) {
   g_watercnt_ml += 250;
+  addDrink(DT_WATER_250ML);
   storeData();
   update_time();
 }
@@ -270,6 +315,7 @@ void removeADrink(ClickRecognizerRef recognizer, void *context) {
   g_watercnt_ml -= 250;
   if(g_watercnt_ml<0)
     g_watercnt_ml = 0;
+  removeDrink();
   storeData();
   update_time();
 }

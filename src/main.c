@@ -297,6 +297,11 @@ static void main_window_load(Window *window) {
   text_layer_set_text_alignment(s_subtext, GTextAlignmentCenter);
 
   layer_add_child(window_layer, text_layer_get_layer(s_subtext));
+
+  StatusBarLayer* status_bar = status_bar_layer_create();
+  layer_add_child(window_layer, status_bar_layer_get_layer(status_bar));
+  status_bar_layer_set_separator_mode(status_bar, StatusBarLayerSeparatorModeDotted);
+  status_bar_layer_set_colors(status_bar, GColorClear, GColorBlack);
 }
 
 static void main_window_unload(Window *window) {

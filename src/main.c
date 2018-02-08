@@ -185,27 +185,10 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
 }
 
 static Layer* g_layer = 0;
-#define MAX_WATER_PATH_POINTS 100
+#define MAX_WATER_PATH_POINTS 16
 static GPoint g_water_path_points[MAX_WATER_PATH_POINTS] = {};
 static GPath* g_water_path = NULL;
-//static GPath *s_my_path_ptr = NULL;
 
-//static const GPathInfo BOLT_PATH_INFO = {
-//  .num_points = 6,
-//  .points = (GPoint []) {{21, 0}, {14, 26}, {28, 26}, {7, 60}, {14, 34}, {0, 34}}
-//};
-
-/*
-so roughly 150pixel in height ... a bit less in width (btw. inet: 148 × 168)
-... so maybe 1,5L height
-... so maybe in width 1min=2px, 74mins width
-
-data structure:
-- afaik it is possible to store an array of 16bit-int
-... to be correct it allows storing 256byte "void*", so 128 16bit-integers
-- so storing time in e.g. 11bit (minutes per day 1440) ... and double-bit and and 16types
-- 
-*/
 static void update_layer(struct Layer* layer, GContext* ctx) {
   if(!g_water_path) {
     GPathInfo pInf = (GPathInfo){ .num_points = MAX_WATER_PATH_POINTS };
@@ -216,19 +199,14 @@ static void update_layer(struct Layer* layer, GContext* ctx) {
   int y=168;
   g_water_path_points[0] = (GPoint){ .x = 0 , .y = 168 };
   for(int i=1 ; i<(MAX_WATER_PATH_POINTS-1) ; ++i) {
-    const int x = 150*i/(MAX_WATER_PATH_POINTS-1);
-//    y -= rand() % (168/MAX_WATER_PATH_POINTS);
-//    y -= 2;
-    y -= rand() % 3;
+    const int x = 150*i/(MAX_WATER_PATH_POINTS-2);
+    y -= rand() % 20;
     g_water_path_points[i].x = x;
     g_water_path_points[i].y = y;
   }
   g_water_path_points[(MAX_WATER_PATH_POINTS-1)].x = 150;
   g_water_path_points[(MAX_WATER_PATH_POINTS-1)].y = 168;
 
-//  g_water_path = gpath_create(&pInf);
-//  }
-  
 //note: antialiased is default on, but it seems the emulator has no proper handling?
 //  graphics_context_set_antialiased(ctx, true);
 

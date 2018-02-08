@@ -4,6 +4,7 @@ enum {
   STORAGE_WATERCNT_ML =23,
   STORAGE_DAY,
   STORAGE_GOAL_ML,
+  STORAGE_DRINKS,
 };
 
 #define DEFAULT_GOAL 5000
@@ -11,12 +12,42 @@ enum {
 static int g_watercnt_ml = 0;
 static int g_goal = DEFAULT_GOAL;
 static char g_day[PERSIST_STRING_MAX_LENGTH] = { '\0' };
+/*data structure:
+- afaik it is possible to store an array of 16bit-int
+... to be correct it allows storing 256byte "void*", so 128 16bit-integers
+- so storing time in e.g. 11bit (minutes per day 1440) ... and double-bit and and 16types
+- 
+*/
+// storage API supports 256byte --> 128 uint16
+static uint16_t g_drinks[128] = {};
 
-
-void storeData() {
+static void storeData() {
   persist_write_int(STORAGE_WATERCNT_ML, g_watercnt_ml);
   persist_write_int(STORAGE_GOAL_ML, g_goal);
   persist_write_string(STORAGE_DAY, g_day);
+  persist_write_data(STORAGE_DRINKS, g_drinks, sizeof(g_drinks));
+}
+
+static void loadData() {
+  if(persist_exists(STORAGE_WATERCNT_ML)) {
+    g_watercnt_ml = persist_read_int(STORAGE_WATERCNT_ML);
+  }
+  if(persist_exists(STORAGE_DAY)) {
+    persist_read_string(STORAGE_DAY, g_day, sizeof(g_day));
+  }
+  if(persist_exists(STORAGE_GOAL_ML)) {
+    g_goal = persist_read_int(STORAGE_GOAL_ML);
+  }
+  if(persist_exists(STORAGE_DRINKS)) {
+    persist_read_data(STORAGE_DRINKS, g_drinks, sizeof(g_drinks));
+  }
+}
+
+static void clearData() {
+  persist_delete(STORAGE_WATERCNT_ML);
+  persist_delete(STORAGE_DAY);
+  persist_delete(STORAGE_GOAL_ML);
+  persist_delete(STORAGE_DRINKS);
 }
 
 static Window *s_main_window; 
@@ -73,31 +104,65 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
 }
 
 static Layer* g_layer = 0;
-static GPath *s_my_path_ptr = NULL;
+#define MAX_WATER_PATH_POINTS 100
+static GPoint g_water_path_points[MAX_WATER_PATH_POINTS] = {};
+static GPath* g_water_path = NULL;
+//static GPath *s_my_path_ptr = NULL;
 
-static const GPathInfo BOLT_PATH_INFO = {
-  .num_points = 6,
-  .points = (GPoint []) {{21, 0}, {14, 26}, {28, 26}, {7, 60}, {14, 34}, {0, 34}}
-};
+//static const GPathInfo BOLT_PATH_INFO = {
+//  .num_points = 6,
+//  .points = (GPoint []) {{21, 0}, {14, 26}, {28, 26}, {7, 60}, {14, 34}, {0, 34}}
+//};
 
+/*
+so roughly 150pixel in height ... a bit less in width (btw. inet: 148 × 168)
+... so maybe 1,5L height
+... so maybe in width 1min=2px, 74mins width
+
+data structure:
+- afaik it is possible to store an array of 16bit-int
+... to be correct it allows storing 256byte "void*", so 128 16bit-integers
+- so storing time in e.g. 11bit (minutes per day 1440) ... and double-bit and and 16types
+- 
+*/
 static void update_layer(struct Layer* layer, GContext* ctx) {
-if(!s_my_path_ptr) {
-  s_my_path_ptr = gpath_create(&BOLT_PATH_INFO);
-  // Rotate 15 degrees:
-  gpath_rotate_to(s_my_path_ptr, TRIG_MAX_ANGLE / 360 * 15);
-  // Translate by (5, 5):
-  gpath_move_to(s_my_path_ptr, GPoint(5, 5));
-}
+  if(!g_water_path) {
+    GPathInfo pInf = (GPathInfo){ .num_points = MAX_WATER_PATH_POINTS };
+    pInf.points = g_water_path_points;
+    g_water_path = gpath_create(&pInf);
+  }
+
+  int y=168;
+  g_water_path_points[0] = (GPoint){ .x = 0 , .y = 168 };
+  for(int i=1 ; i<(MAX_WATER_PATH_POINTS-1) ; ++i) {
+    const int x = 150*i/(MAX_WATER_PATH_POINTS-1);
+//    y -= rand() % (168/MAX_WATER_PATH_POINTS);
+//    y -= 2;
+    y -= rand() % 3;
+    g_water_path_points[i].x = x;
+    g_water_path_points[i].y = y;
+  }
+  g_water_path_points[(MAX_WATER_PATH_POINTS-1)].x = 150;
+  g_water_path_points[(MAX_WATER_PATH_POINTS-1)].y = 168;
+
+//  g_water_path = gpath_create(&pInf);
+//  }
+  
+//note: antialiased is default on, but it seems the emulator has no proper handling?
+//  graphics_context_set_antialiased(ctx, true);
+
   // Fill the path:
-  graphics_context_set_fill_color(ctx, GColorWhite);
-  gpath_draw_filled(ctx, s_my_path_ptr);
+  graphics_context_set_fill_color(ctx, GColorFromRGB(0, 170, 255));
+  gpath_draw_filled(ctx, g_water_path);
+
   // Stroke the path:
 #ifdef PBL_COLOR
   graphics_context_set_stroke_color(ctx, GColorBlue);
 #else
   graphics_context_set_stroke_color(ctx, GColorBlack);
 #endif
-  gpath_draw_outline(ctx, s_my_path_ptr);
+  graphics_context_set_stroke_width(ctx, 3); //note: only odd width supported (1,3,5,...)
+  gpath_draw_outline(ctx, g_water_path);
 }
 
 static void main_window_load(Window *window) {
@@ -157,20 +222,10 @@ static void clickConfy(void *context) {
 
 static void init() {
 #if 0 // debug reset ;P
-  persist_delete(STORAGE_WATERCNT_ML);
-  persist_delete(STORAGE_DAY);
-  persist_delete(STORAGE_GOAL_ML);
+  clearData();
 #endif
   
-  if(persist_exists(STORAGE_WATERCNT_ML)) {
-    g_watercnt_ml = persist_read_int(STORAGE_WATERCNT_ML);
-  }
-  if(persist_exists(STORAGE_DAY)) {
-    persist_read_string(STORAGE_DAY, g_day, sizeof(g_day));
-  }
-  if(persist_exists(STORAGE_GOAL_ML)) {
-    g_goal = persist_read_int(STORAGE_GOAL_ML);
-  }
+  loadData();
   
   // Create main Window element and assign to pointer
   s_main_window = window_create();

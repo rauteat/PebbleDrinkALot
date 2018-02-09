@@ -127,7 +127,7 @@ int curMins() {
   return (curTM->tm_hour * 60 + curTM->tm_min);
 }
 
-static const int DOUBLE_INTERVAL = 5; //mins
+static const int DOUBLE_INTERVAL = 2; //mins
 void addDrink(int type) {
   const int num = numDrinks();
   const int t = curMins();  

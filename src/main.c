@@ -174,6 +174,7 @@ static void update_time() {
       g_goal = g_watercnt_ml;
     }
     g_watercnt_ml = 0;
+    memset(g_drinks,0,sizeof(g_drinks));
     strcpy(g_day,curDay);
     storeData();
   }

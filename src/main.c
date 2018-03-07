@@ -1,7 +1,7 @@
 #include <pebble.h>
 
 enum {
-  STORAGE_WATERCNT_ML =23,
+  STORAGE_WATERCNT_ML =23, // <-- no longer used, replaced by STORAGE_DRINKS
   STORAGE_DAY,
   STORAGE_GOAL_ML,
   STORAGE_DRINKS,
@@ -9,7 +9,20 @@ enum {
 
 #define DEFAULT_GOAL 5000
 
-static int g_watercnt_ml = 0;
+typedef enum {
+  DT_WATER_250ML =0,
+  DT_WATER_100ML =1,
+  DT_WATER_333ML =2,
+
+  DT_COFFEE_100ML=4,
+
+  // beer? 250ML?
+  // ...
+  MAX_DRINK_TYPES = 4,
+} DrinkType;
+
+static int g_activeDrinkType = DT_WATER_250ML;
+
 static int g_goal = DEFAULT_GOAL;
 static char g_day[PERSIST_STRING_MAX_LENGTH] = { '\0' };
 /*data structure:
@@ -23,16 +36,12 @@ static char g_day[PERSIST_STRING_MAX_LENGTH] = { '\0' };
 static uint16_t g_drinks[MAX_DRINKS] = {};
 
 static void storeData() {
-  persist_write_int(STORAGE_WATERCNT_ML, g_watercnt_ml);
   persist_write_int(STORAGE_GOAL_ML, g_goal);
   persist_write_string(STORAGE_DAY, g_day);
   persist_write_data(STORAGE_DRINKS, g_drinks, sizeof(g_drinks));
 }
 
 static void loadData() {
-  if(persist_exists(STORAGE_WATERCNT_ML)) {
-    g_watercnt_ml = persist_read_int(STORAGE_WATERCNT_ML);
-  }
   if(persist_exists(STORAGE_DAY)) {
     persist_read_string(STORAGE_DAY, g_day, sizeof(g_day));
   }
@@ -60,16 +69,6 @@ int numDrinks() {
   return MAX_DRINKS;
 }
 
-typedef enum {
-  DT_WATER_250ML =0,
-  DT_WATER_100ML =1,
-  DT_WATER_333ML =2,
-
-  DT_COFFEE_100ML=4,
-
-  // beer? 250ML?
-  // ...
-} DrinkType;
 
 // 1 bit doubling
 // 4 bit drink type
@@ -98,6 +97,18 @@ int drinkVolume(int i) {
   default:
     return 0;
   }
+}
+
+int calcDrinksVolume() {
+  int sum = 0;
+  for(int i=0 ; i<MAX_DRINKS ; ++i) {
+    if(g_drinks[i] == 0) {
+      break;
+    }
+
+    sum += drinkVolume(i);
+  }
+  return sum;
 }
 
 void setDrink(int idx, int time, int type) {
@@ -161,19 +172,22 @@ void removeDrink() {
 static Window *s_main_window; 
 static TextLayer *s_time_layer;
 static TextLayer *s_subtext;
+static TextLayer *s_drinkLbl;
 
 static void update_time() {
   // Get a tm structure
   time_t temp = time(NULL);
   struct tm *tick_time = localtime(&temp);
+
+  int waterCntMl = calcDrinksVolume();
   
   static char curDay[8];
   strftime(curDay, sizeof(curDay), "%m-%d", tick_time); // %F = "%Y-%m-%d" ... but the year doesn't matter (unless you don't use the app for exactly one year °°)
   if(0 != strcmp(curDay,g_day)) {
-    if(g_watercnt_ml > DEFAULT_GOAL/2) {
-      g_goal = g_watercnt_ml;
+    if(waterCntMl > DEFAULT_GOAL/2) {
+      g_goal = waterCntMl;
     }
-    g_watercnt_ml = 0;
+    waterCntMl = 0;
     memset(g_drinks,0,sizeof(g_drinks));
     strcpy(g_day,curDay);
     storeData();
@@ -191,7 +205,7 @@ static void update_time() {
 //  if(clippedHour<0) clippedHour = 0;
 //  int curShould = (g_goal * clippedHour / 15);
   int curShould = (g_goal * clippedTime / 960);
-  int curDiff = g_watercnt_ml - curShould;
+  int curDiff = waterCntMl - curShould;
   int neg = (curDiff<0);
   if(neg) curDiff *= -1;
   
@@ -203,7 +217,7 @@ static void update_time() {
   text_layer_set_text(s_time_layer, s_buffer);
 
   static char s_buffer2[16];
-  snprintf(s_buffer2,sizeof(s_buffer2),"%d / %d", g_watercnt_ml, g_goal);
+  snprintf(s_buffer2,sizeof(s_buffer2),"%d / %d", waterCntMl, g_goal);
   text_layer_set_text(s_subtext,s_buffer2);
 //  text_layer_set_text(s_subtext,curDay);
 }
@@ -256,7 +270,7 @@ static void update_layer(struct Layer* layer, GContext* ctx) {
 //  graphics_context_set_antialiased(ctx, true);
 
   // Fill the path:
-  graphics_context_set_fill_color(ctx, GColorFromRGB(0, 170, 255));
+  graphics_context_set_fill_color(ctx, GColorFromRGB(170, 170, 255));
   gpath_draw_filled(ctx, g_water_path);
 
   // Stroke the path:
@@ -296,8 +310,17 @@ static void main_window_load(Window *window) {
   text_layer_set_text_color(s_subtext, GColorBlack);
   text_layer_set_font(s_subtext, fonts_get_system_font(FONT_KEY_GOTHIC_28));
   text_layer_set_text_alignment(s_subtext, GTextAlignmentCenter);
-
   layer_add_child(window_layer, text_layer_get_layer(s_subtext));
+
+  //NOTE: gothic font <28: 24,18,14
+  s_drinkLbl = text_layer_create( GRect(0, 130, bounds.size.w, 24));
+  text_layer_set_background_color(s_drinkLbl, GColorClear);
+  text_layer_set_text_color(s_drinkLbl, GColorFromRGB(100, 100, 100));
+  text_layer_set_font(s_drinkLbl, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
+  text_layer_set_text_alignment(s_drinkLbl, GTextAlignmentCenter);
+  layer_add_child(window_layer, text_layer_get_layer(s_drinkLbl));
+
+  text_layer_set_text(s_drinkLbl,"Water 250ML");
 
   StatusBarLayer* status_bar = status_bar_layer_create();
   layer_add_child(window_layer, status_bar_layer_get_layer(status_bar));
@@ -312,23 +335,44 @@ static void main_window_unload(Window *window) {
 
 // typedef void(* ClickHandler)(ClickRecognizerRef recognizer, void *context) 
 void addADrink(ClickRecognizerRef recognizer, void *context) {
-  g_watercnt_ml += 250;
-  addDrink(DT_WATER_250ML);
+  addDrink(g_activeDrinkType);
   storeData();
   update_time();
 }
 void removeADrink(ClickRecognizerRef recognizer, void *context) {
-  g_watercnt_ml -= 250;
-  if(g_watercnt_ml<0)
-    g_watercnt_ml = 0;
   removeDrink();
   storeData();
   update_time();
 }
+void changeDrinkType(ClickRecognizerRef recognizer, void *context) {
+  if(++g_activeDrinkType > MAX_DRINK_TYPES) {
+    g_activeDrinkType = 0;
+  }
+
+  switch(g_activeDrinkType) {
+  case DT_WATER_250ML:
+    text_layer_set_text(s_drinkLbl,"Water 250ML");
+    break;
+  case DT_WATER_100ML:
+    text_layer_set_text(s_drinkLbl,"Water 100ML");
+    break;
+  case DT_WATER_333ML:
+    text_layer_set_text(s_drinkLbl,"Water 333ML");
+    break;
+  case DT_COFFEE_100ML:
+    text_layer_set_text(s_drinkLbl,"Coffee 100ML");
+    break;
+  default:
+    text_layer_set_text(s_drinkLbl,"? 0ML");
+    break;
+  }
+}
 
 static void clickConfy(void *context) {
   window_single_repeating_click_subscribe(BUTTON_ID_UP, 0, addADrink);
-  window_single_repeating_click_subscribe(BUTTON_ID_DOWN, 0, removeADrink);
+  window_single_repeating_click_subscribe(BUTTON_ID_SELECT, 0, removeADrink);
+//  window_long_click_subscribe(BUTTON_ID_UP, 1000, removeADrink, NULL); // <-- FIXME this would first trigger the single click (addADrink) before firing the one -.-
+  window_single_repeating_click_subscribe(BUTTON_ID_DOWN, 0, changeDrinkType);
 }
 
 static void init() {
@@ -337,7 +381,7 @@ static void init() {
 #endif
   
   loadData();
-  
+
   // Create main Window element and assign to pointer
   s_main_window = window_create();
 

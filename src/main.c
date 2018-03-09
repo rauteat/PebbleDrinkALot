@@ -13,12 +13,13 @@ typedef enum {
   DT_WATER_250ML =0,
   DT_WATER_100ML =1,
   DT_WATER_333ML =2,
+  DT_WATER_200ML =3,
 
-  DT_COFFEE_100ML=4,
+//  DT_COFFEE_100ML=4,
 
   // beer? 250ML?
   // ...
-  MAX_DRINK_TYPES = 4,
+  MAX_DRINK_TYPES = 3,
 } DrinkType;
 
 static int g_activeDrinkType = DT_WATER_250ML;
@@ -92,8 +93,10 @@ int drinkVolume(int i) {
     return 100*f;
   case DT_WATER_333ML:
     return 333*f;
-  case DT_COFFEE_100ML:
-    return 100*f;
+  case DT_WATER_200ML:
+    return 200*f;
+//  case DT_COFFEE_100ML:
+//    return 100*f;
   default:
     return 0;
   }
@@ -364,9 +367,12 @@ void changeDrinkType(ClickRecognizerRef recognizer, void *context) {
   case DT_WATER_333ML:
     text_layer_set_text(s_drinkLbl,"Water 333ML");
     break;
-  case DT_COFFEE_100ML:
-    text_layer_set_text(s_drinkLbl,"Coffee 100ML");
+  case DT_WATER_200ML:
+    text_layer_set_text(s_drinkLbl,"Water 200ML");
     break;
+//  case DT_COFFEE_100ML:
+//    text_layer_set_text(s_drinkLbl,"Coffee 100ML");
+//    break;
   default:
     text_layer_set_text(s_drinkLbl,"? 0ML");
     break;

@@ -201,7 +201,7 @@ static void update_time() {
   if(tick_time->tm_hour > 20) {
     clippedTime = 960; // (21-5)*60
   }
-  if(tick_time->tm_hour > 5) {
+  else if(tick_time->tm_hour > 5) {
     clippedTime = (tick_time->tm_hour - 5)*60 + tick_time->tm_min;
   }
 //  int clippedHour = (tick_time->tm_hour < 20) ? tick_time->tm_hour-5 : 15;

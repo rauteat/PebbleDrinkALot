@@ -385,6 +385,18 @@ static void init() {
   
   loadData();
 
+#if 0 // some dummy data for doing nice screenshots ;P
+  g_goal = 3141;
+  const int cm = curMins();
+  for(int i=0 ; i<MAX_DRINKS ; ++i) {
+    int fakeMins = (9*60)+12*60*i/(MAX_DRINKS/9);
+    if(fakeMins < cm) //i < MAX_DRINKS/9)
+      setDrink(i,fakeMins,i%MAX_DRINK_TYPES);
+    else
+      setDrink(i,0,0);
+  }
+#endif
+
   // Create main Window element and assign to pointer
   s_main_window = window_create();
 

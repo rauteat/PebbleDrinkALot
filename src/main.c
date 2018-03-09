@@ -238,22 +238,27 @@ static void update_layer(struct Layer* layer, GContext* ctx) {
     g_water_path = gpath_create(&pInf);
   }
 
-  int y=168;
-  g_water_path_points[0] = (GPoint){ .x = 0 , .y = 168 };
+  GRect bounds = layer_get_bounds(g_layer);
+
+  int y=bounds.size.h;
+  g_water_path_points[0] = (GPoint){ .x = 0 , .y = y };
 #if 1
   int ct = curMins();
   int ip = 1;
+  const int futureMins = PBL_IF_RECT_ELSE(10, 30);
   const int numD = numDrinks();
+  const int minsToPx = 1;
   for(int i=0 ; i<numD ; ++i) {
     const int dt = drinkTime(i);
-    const int x = 148+(dt-ct)*2;
+    // as the display is roughly 150px width, using minutes 1:1 fits roughly 2 hours on screen
+    const int x = bounds.size.w+(dt-ct-futureMins)*minsToPx;
     if(x<0) continue;
     y -= drinkVolume(i)/10;
     if(ip>=(MAX_WATER_PATH_POINTS-1)) continue; //FIXME: maybe better do this inverse ;)
     g_water_path_points[ip++] = (GPoint){ .x = x , .y = y };
   }
   for(;ip<(MAX_WATER_PATH_POINTS-1);++ip) {
-    g_water_path_points[ip] = (GPoint){ .x = 150 , .y = y };
+    g_water_path_points[ip] = (GPoint){ .x = bounds.size.w , .y = y };
   }
 #else
   for(int i=1 ; i<(MAX_WATER_PATH_POINTS-1) ; ++i) {
@@ -263,8 +268,8 @@ static void update_layer(struct Layer* layer, GContext* ctx) {
     g_water_path_points[i].y = y;
   }
 #endif
-  g_water_path_points[(MAX_WATER_PATH_POINTS-1)].x = 150;
-  g_water_path_points[(MAX_WATER_PATH_POINTS-1)].y = 168;
+  g_water_path_points[(MAX_WATER_PATH_POINTS-1)].x = bounds.size.w;
+  g_water_path_points[(MAX_WATER_PATH_POINTS-1)].y = bounds.size.h;
 
 //note: antialiased is default on, but it seems the emulator has no proper handling?
 //  graphics_context_set_antialiased(ctx, true);

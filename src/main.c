@@ -233,6 +233,7 @@ static Layer* g_layer = 0;
 #define MAX_WATER_PATH_POINTS 16
 static GPoint g_water_path_points[MAX_WATER_PATH_POINTS] = {};
 static GPath* g_water_path = NULL;
+static const int lineWidth = 3;
 
 static void update_layer(struct Layer* layer, GContext* ctx) {
   if(!g_water_path) {
@@ -244,8 +245,7 @@ static void update_layer(struct Layer* layer, GContext* ctx) {
   GRect bounds = layer_get_bounds(g_layer);
 
   int y=bounds.size.h;
-  g_water_path_points[0] = (GPoint){ .x = 0 , .y = y };
-#if 1
+  g_water_path_points[0] = (GPoint){ .x = 0 , .y = y + lineWidth };
   int ct = curMins();
   int ip = 1;
   const int futureMins = PBL_IF_RECT_ELSE(10, 30);
@@ -261,18 +261,10 @@ static void update_layer(struct Layer* layer, GContext* ctx) {
     g_water_path_points[ip++] = (GPoint){ .x = x , .y = y };
   }
   for(;ip<(MAX_WATER_PATH_POINTS-1);++ip) {
-    g_water_path_points[ip] = (GPoint){ .x = bounds.size.w , .y = y };
+    g_water_path_points[ip] = (GPoint){ .x = bounds.size.w + lineWidth , .y = y };
   }
-#else
-  for(int i=1 ; i<(MAX_WATER_PATH_POINTS-1) ; ++i) {
-    const int x = 150*i/(MAX_WATER_PATH_POINTS-2);
-    y -= rand() % 20;
-    g_water_path_points[i].x = x;
-    g_water_path_points[i].y = y;
-  }
-#endif
-  g_water_path_points[(MAX_WATER_PATH_POINTS-1)].x = bounds.size.w;
-  g_water_path_points[(MAX_WATER_PATH_POINTS-1)].y = bounds.size.h;
+  g_water_path_points[(MAX_WATER_PATH_POINTS-1)].x = bounds.size.w + lineWidth;
+  g_water_path_points[(MAX_WATER_PATH_POINTS-1)].y = bounds.size.h + lineWidth;
 
 //note: antialiased is default on, but it seems the emulator has no proper handling?
 //  graphics_context_set_antialiased(ctx, true);
@@ -287,7 +279,7 @@ static void update_layer(struct Layer* layer, GContext* ctx) {
 #else
   graphics_context_set_stroke_color(ctx, GColorBlack);
 #endif
-  graphics_context_set_stroke_width(ctx, 3); //note: only odd width supported (1,3,5,...)
+  graphics_context_set_stroke_width(ctx, lineWidth); //note: only odd width supported (1,3,5,...)
   gpath_draw_outline(ctx, g_water_path);
 }
 

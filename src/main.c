@@ -5,15 +5,16 @@ enum {
   STORAGE_DAY,
   STORAGE_GOAL_ML,
   STORAGE_DRINKS,
+  STORAGE_ACTIVE_DRINK_TYPE,
 };
 
 #define DEFAULT_GOAL 5000
 
 typedef enum {
-  DT_WATER_250ML =0,
-  DT_WATER_100ML =1,
-  DT_WATER_333ML =2,
-  DT_WATER_200ML =3,
+  DT_WATER_100ML =0,
+  DT_WATER_200ML =1,
+  DT_WATER_250ML =2,
+  DT_WATER_333ML =3,
 
 //  DT_COFFEE_100ML=4,
 
@@ -40,6 +41,7 @@ static void storeData() {
   persist_write_int(STORAGE_GOAL_ML, g_goal);
   persist_write_string(STORAGE_DAY, g_day);
   persist_write_data(STORAGE_DRINKS, g_drinks, sizeof(g_drinks));
+  persist_write_int(STORAGE_ACTIVE_DRINK_TYPE, g_activeDrinkType);
 }
 
 static void loadData() {
@@ -51,6 +53,9 @@ static void loadData() {
   }
   if(persist_exists(STORAGE_DRINKS)) {
     persist_read_data(STORAGE_DRINKS, g_drinks, sizeof(g_drinks));
+  }
+  if(persist_exists(STORAGE_ACTIVE_DRINK_TYPE)) {
+    g_activeDrinkType = persist_read_int(STORAGE_ACTIVE_DRINK_TYPE);
   }
 }
 
@@ -229,6 +234,29 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   update_time();
 }
 
+void updateDrinkTypeLabel() {
+  switch(g_activeDrinkType) {
+  case DT_WATER_250ML:
+    text_layer_set_text(s_drinkLbl,"Water 250ML");
+    break;
+  case DT_WATER_100ML:
+    text_layer_set_text(s_drinkLbl,"Water 100ML");
+    break;
+  case DT_WATER_333ML:
+    text_layer_set_text(s_drinkLbl,"Water 333ML");
+    break;
+  case DT_WATER_200ML:
+    text_layer_set_text(s_drinkLbl,"Water 200ML");
+    break;
+//  case DT_COFFEE_100ML:
+//    text_layer_set_text(s_drinkLbl,"Coffee 100ML");
+//    break;
+  default:
+    text_layer_set_text(s_drinkLbl,"? 0ML");
+    break;
+  }
+}
+
 static Layer* g_layer = 0;
 #define MAX_WATER_PATH_POINTS 16
 static GPoint g_water_path_points[MAX_WATER_PATH_POINTS] = {};
@@ -320,7 +348,7 @@ static void main_window_load(Window *window) {
   text_layer_set_text_alignment(s_drinkLbl, GTextAlignmentCenter);
   layer_add_child(window_layer, text_layer_get_layer(s_drinkLbl));
 
-  text_layer_set_text(s_drinkLbl,"Water 250ML");
+  updateDrinkTypeLabel();
 
   StatusBarLayer* status_bar = status_bar_layer_create();
   layer_add_child(window_layer, status_bar_layer_get_layer(status_bar));
@@ -349,26 +377,8 @@ void changeDrinkType(ClickRecognizerRef recognizer, void *context) {
     g_activeDrinkType = 0;
   }
 
-  switch(g_activeDrinkType) {
-  case DT_WATER_250ML:
-    text_layer_set_text(s_drinkLbl,"Water 250ML");
-    break;
-  case DT_WATER_100ML:
-    text_layer_set_text(s_drinkLbl,"Water 100ML");
-    break;
-  case DT_WATER_333ML:
-    text_layer_set_text(s_drinkLbl,"Water 333ML");
-    break;
-  case DT_WATER_200ML:
-    text_layer_set_text(s_drinkLbl,"Water 200ML");
-    break;
-//  case DT_COFFEE_100ML:
-//    text_layer_set_text(s_drinkLbl,"Coffee 100ML");
-//    break;
-  default:
-    text_layer_set_text(s_drinkLbl,"? 0ML");
-    break;
-  }
+  updateDrinkTypeLabel();
+  storeData();
 }
 
 static void clickConfy(void *context) {
